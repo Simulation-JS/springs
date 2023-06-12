@@ -10,6 +10,7 @@ import {
   pythag,
   radToDeg,
   SceneCollection,
+  randInt,
 } from "simulationjs";
 import {
   ChangeEvent,
@@ -22,15 +23,23 @@ const Root = () => {
   const k = createState(2);
   const springLength = createState(40);
   const numNodes = createState(5);
+  const hasGravity = createState(true);
+  const nodeMass = createState(10);
+  let stationaryIndexes = new Set([0]);
 
   class SpringNode extends Circle {
     velocity = new Vector(0, 0);
     bounds: Vector;
-    mass = 10;
-    constructor(pos: Vector, bounds: Vector) {
+    mass: number;
+    constructor(pos: Vector, mass: number, bounds: Vector) {
       const color = new Color(0, 0, 0);
       super(pos, 4, color);
       this.bounds = bounds;
+      this.mass = mass;
+    }
+
+    setMass(newMass: number) {
+      this.mass = newMass;
     }
 
     accelerate(vec: Vector) {
@@ -94,6 +103,7 @@ const Root = () => {
           nodes[nodes.length - 1].pos
             .clone()
             .add(new Vector(10 * Math.sign(Math.random() - 0.5), 0)),
+          nodeMass().value,
           new Vector(canvas.width, canvas.height)
         );
 
@@ -124,13 +134,24 @@ const Root = () => {
       }
     }, [numNodes]);
 
+    createEffect(() => {
+      nodes.forEach((node) => {
+        node.setMass(nodeMass().value);
+      });
+    }, [nodeMass]);
+
     let dragIndex: number | null = null;
     let prevDragPos = new Vector(0, 0);
     let prevDiff = new Vector(0, 0);
+    let holdingShift = false;
 
     frameLoop(() => {
       nodes.forEach((node, index) => {
-        if (index === 0) return;
+        if (stationaryIndexes.has(index)) {
+          node.velocity.x = 0;
+          node.velocity.y = 0;
+          return;
+        }
         if (dragIndex === index) return;
         const a = getForce(nodes, index);
         a.divide(node.mass);
@@ -138,8 +159,35 @@ const Root = () => {
       });
     })();
 
+    addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Shift") {
+        holdingShift = true;
+      }
+    });
+
+    addEventListener("keyup", (e: KeyboardEvent) => {
+      if (e.key === "Shift") {
+        holdingShift = false;
+      }
+    });
+
     canvas.on("mousedown", (e: MouseEvent) => {
-      prevDragPos = new Vector(e.offsetX, e.offsetY);
+      const point = new Vector(e.offsetX, e.offsetY);
+      if (holdingShift) {
+        const index = getMinDistIndex(nodes, point);
+
+        if (index === null) return;
+
+        if (stationaryIndexes.has(index)) {
+          stationaryIndexes.delete(index);
+        } else {
+          stationaryIndexes.add(index);
+        }
+
+        return;
+      }
+
+      prevDragPos = point;
       dragIndex = getMinDistIndex(nodes, prevDragPos);
 
       if (!dragIndex) return;
@@ -170,7 +218,11 @@ const Root = () => {
   });
 
   function getForce(nodes: SpringNode[], index: number) {
-    let force = new Vector(0, 9.8);
+    const gravityDampen = 10;
+    let force = new Vector(
+      0,
+      hasGravity().value ? (9.8 * nodes[index].mass) / gravityDampen : 0
+    );
 
     if (index > 0) {
       const distX = nodes[index].pos.x - nodes[index - 1].pos.x;
@@ -233,7 +285,9 @@ const Root = () => {
     const padding = 120;
     for (let i = 0; i < num; i++) {
       const pos = new Vector(width / 2, springLength().value * i + padding);
-      res.push(new SpringNode(pos, new Vector(width, height)));
+      res.push(
+        new SpringNode(pos, nodeMass().value, new Vector(width, height))
+      );
     }
 
     return res;
@@ -249,6 +303,32 @@ const Root = () => {
 
   const handleNumNodesChange = (e: ChangeEvent<HTMLInputElement>) => {
     numNodes(+e.currentTarget.value);
+  };
+
+  const handleGravityChange = (e: any) => {
+    console.log(e.currentTarget.value);
+    hasGravity((prev) => !prev);
+  };
+
+  const handleMassChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newMass = +e.currentTarget.value;
+    nodeMass(newMass);
+  };
+
+  const randomizeSettings = () => {
+    stationaryIndexes = new Set([0]);
+
+    const newK = Math.random() * 4 + 2;
+    const newLength = randInt(200);
+    const numberOfNodes = randInt(7, 3);
+    const newMass = randInt(995, 5);
+    const newHasGravity = Math.random() > 0.5;
+
+    k(newK);
+    springLength(newLength);
+    numNodes(numberOfNodes);
+    nodeMass(newMass);
+    hasGravity(newHasGravity);
   };
 
   return (
@@ -289,6 +369,27 @@ const Root = () => {
             type="range"
           />
         </div>
+        <div>
+          <label for="mass-input">Mass of Nodes</label>
+          <input
+            id="mass-input"
+            value={nodeMass()}
+            onChange={handleMassChange}
+            min={5}
+            max={1000}
+            type="range"
+          />
+        </div>
+        <div>
+          <label for="gravity-input">Gravity</label>
+          <input
+            id="gravity-input"
+            checked={hasGravity()}
+            onChange={handleGravityChange}
+            type="checkbox"
+          />
+        </div>
+        <button onClick={randomizeSettings}>Randomize</button>
       </div>
       <canvas id="canvas" />
     </>

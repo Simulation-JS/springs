@@ -6,11 +6,11 @@ settings:
 
 dependencies:
   '@jacksonotto/lampjs':
-    specifier: ^3.0.4
-    version: 3.0.4
+    specifier: ^3.0.5
+    version: 3.0.5
   simulationjs:
-    specifier: ^3.8.1
-    version: 3.8.1
+    specifier: ^3.8.2
+    version: 3.8.2
 
 devDependencies:
   '@vercel/node':
@@ -244,8 +244,8 @@ packages:
     dev: true
     optional: true
 
-  /@jacksonotto/lampjs@3.0.4:
-    resolution: {integrity: sha512-3vmcul/bI/R5aF12EqjT+j5i6yjT+8h3FKdQ2OQANvgzxqrAYXNlUKDmLhQSvyKHPkNaRDQDHCX7BOrhsQqX8w==}
+  /@jacksonotto/lampjs@3.0.5:
+    resolution: {integrity: sha512-BQNIfS95Q/20GhkfHatlqC64Q/C0Maon7GRPUUHf1GHANUI9Jcibrk/xGcHHzFy7oZrxsFQvE2ohtkDpqOR2yA==}
     dev: false
 
   /@jridgewell/resolve-uri@3.1.1:
@@ -906,8 +906,8 @@ packages:
       queue-microtask: 1.2.3
     dev: true
 
-  /simulationjs@3.8.1:
-    resolution: {integrity: sha512-RQGkj0pj0H3ltUo425eP8z/XyLAhs7xr6L/C3TPlQH/jagbp2YfidAZDOXlBxKVSmqwOCZZr2VDbAXJ55JEs9w==}
+  /simulationjs@3.8.2:
+    resolution: {integrity: sha512-MIWFqvbieOVX2DDa0fEjsz6hcpIld3h7CPtgv3PEHov3mCjnly0gM5vjH48ThidQONyhg/MA7UEDBQmnjgmEkw==}
     dev: false
 
   /source-map-js@1.0.2:

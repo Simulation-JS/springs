@@ -26,3 +26,16 @@ h1 {
   font-size: 17px;
   margin-top: 0;
 }
+
+button {
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  outline: none;
+  transition: 0.15s;
+}
+
+button:hover {
+  border-color: black;
+}
