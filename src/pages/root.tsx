@@ -9,14 +9,21 @@ import {
   Line,
   pythag,
   radToDeg,
+  SceneCollection,
 } from "simulationjs";
-import { ChangeEvent, createState, onPageMount } from "@jacksonotto/lampjs";
+import {
+  ChangeEvent,
+  createEffect,
+  createState,
+  onPageMount,
+} from "@jacksonotto/lampjs";
 
 const Root = () => {
   const k = createState(2);
   const springLength = createState(40);
+  const numNodes = createState(5);
 
-  class RopeNode extends Circle {
+  class SpringNode extends Circle {
     velocity = new Vector(0, 0);
     bounds: Vector;
     mass = 10;
@@ -62,16 +69,60 @@ const Root = () => {
     canvas.fitElement();
     canvas.start();
 
-    const nodes = generateNodes(5, canvas.width, canvas.height);
+    const nodesCol = new SceneCollection("nodes");
+    const linesCol = new SceneCollection("lines");
+
+    canvas.add(nodesCol);
+    canvas.add(linesCol);
+
+    const nodes = generateNodes(numNodes().value, canvas.width, canvas.height);
     const lines = generateLines(nodes);
 
     lines.forEach((line) => {
-      canvas.add(line);
+      linesCol.add(line);
     });
 
     nodes.forEach((node) => {
-      canvas.add(node);
+      nodesCol.add(node);
     });
+
+    let prevNodes = numNodes().value;
+
+    createEffect(() => {
+      while (prevNodes < numNodes().value) {
+        const newNode = new SpringNode(
+          nodes[nodes.length - 1].pos
+            .clone()
+            .add(new Vector(10 * Math.sign(Math.random() - 0.5), 0)),
+          new Vector(canvas.width, canvas.height)
+        );
+
+        nodes.push(newNode);
+        nodesCol.add(newNode);
+
+        const line = new Line(
+          nodes[nodes.length - 2].pos,
+          newNode.pos,
+          new Color(0, 0, 0),
+          4
+        );
+
+        lines.push(line);
+        linesCol.add(line);
+
+        prevNodes++;
+      }
+
+      while (prevNodes > numNodes().value) {
+        nodes.pop();
+        nodesCol.scene.pop();
+
+        lines.pop();
+        linesCol.scene.pop();
+
+        prevNodes--;
+      }
+    }, [numNodes]);
 
     let dragIndex: number | null = null;
     let prevDragPos = new Vector(0, 0);
@@ -118,7 +169,7 @@ const Root = () => {
     });
   });
 
-  function getForce(nodes: RopeNode[], index: number) {
+  function getForce(nodes: SpringNode[], index: number) {
     let force = new Vector(0, 9.8);
 
     if (index > 0) {
@@ -143,7 +194,7 @@ const Root = () => {
     return force;
   }
 
-  function getMinDistIndex(nodes: RopeNode[], pos: Vector) {
+  function getMinDistIndex(nodes: SpringNode[], pos: Vector) {
     let currentDist = distance(nodes[0].pos, pos);
     let currentIndex = 0;
 
@@ -160,7 +211,7 @@ const Root = () => {
     return currentIndex < 0 ? null : currentIndex;
   }
 
-  function generateLines(nodes: RopeNode[]) {
+  function generateLines(nodes: SpringNode[]) {
     const res: Line[] = [];
 
     for (let i = 0; i < nodes.length - 1; i++) {
@@ -177,12 +228,12 @@ const Root = () => {
   }
 
   function generateNodes(num: number, width: number, height: number) {
-    const res: RopeNode[] = [];
+    const res: SpringNode[] = [];
 
     const padding = 120;
     for (let i = 0; i < num; i++) {
       const pos = new Vector(width / 2, springLength().value * i + padding);
-      res.push(new RopeNode(pos, new Vector(width, height)));
+      res.push(new SpringNode(pos, new Vector(width, height)));
     }
 
     return res;
@@ -194,6 +245,10 @@ const Root = () => {
 
   const handleLengthChange = (e: ChangeEvent<HTMLInputElement>) => {
     springLength(+e.currentTarget.value);
+  };
+
+  const handleNumNodesChange = (e: ChangeEvent<HTMLInputElement>) => {
+    numNodes(+e.currentTarget.value);
   };
 
   return (
@@ -220,6 +275,17 @@ const Root = () => {
             onChange={handleLengthChange}
             min={0}
             max={200}
+            type="range"
+          />
+        </div>
+        <div>
+          <label for="node-input">Number of Nodes</label>
+          <input
+            id="node-input"
+            value={numNodes()}
+            onChange={handleNumNodesChange}
+            min={1}
+            max={20}
             type="range"
           />
         </div>
