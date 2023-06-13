@@ -10,6 +10,8 @@
   gap: 8px;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.125);
+  min-width: 225px;
+  max-width: 225px;
 }
 
 .controls div {
@@ -18,4 +20,30 @@
   align-items: flex-start;
   font-size: 13px;
   color: rgb(120, 120, 120);
+}
+
+details {
+  border: 1px solid gray;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+code {
+  background: rgba(175, 175, 175, 0.35);
+  padding: 0 4px;
+  border-radius: 2px;
+  text-align: center;
 }

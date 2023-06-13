@@ -427,6 +427,27 @@ const Root = () => {
           />
         </div>
         <button onClick={randomizeSettings}>Randomize</button>
+        <details>
+          <summary>Directions</summary>
+          <span>
+            <ul>
+              <li>
+                Hold <code>Shift</code> and click to toggle a point as
+                stationary.
+              </li>
+              <li>Click and drag to drag a point.</li>
+              <li>
+                While dragging a point, releasing while in motion will add
+                velocity to the point.
+              </li>
+              <li>
+                Change settings for different behavior, if the shape/spring
+                becomes unstable, bring <code>k</code> all the way down and
+                slowly increase.
+              </li>
+            </ul>
+          </span>
+        </details>
       </div>
       <canvas id="canvas" />
     </>
