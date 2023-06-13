@@ -83,6 +83,7 @@ const Root = () => {
     onFrame() {
       this.move(this.velocity);
       this.velocity = dampenVelocity(this.velocity);
+
       if (this.pos.y + this.radius > this.bounds.y) {
         this.pos.y = this.bounds.y - this.radius;
         this.velocity.y *= -0.76;
@@ -336,7 +337,7 @@ const Root = () => {
   };
 
   const randomizeSettings = () => {
-    const newK = Math.random() * 4 + 2;
+    const newK = Math.random() * 8 + 2;
     const newLength = randInt(200);
     const numberOfNodes = randInt(7, 3);
     const newMass = randInt(995, 5);
@@ -372,7 +373,7 @@ const Root = () => {
             type="range"
             min={0.1}
             step={0.1}
-            max={6}
+            max={10}
           />
         </div>
         <div>
@@ -382,7 +383,8 @@ const Root = () => {
             value={springLength()}
             onChange={handleLengthChange}
             min={0}
-            max={200}
+            max={250}
+            step={1}
             type="range"
           />
         </div>
@@ -442,8 +444,8 @@ const Root = () => {
               </li>
               <li>
                 Change settings for different behavior, if the shape/spring
-                becomes unstable, bring <code>k</code> all the way down and
-                slowly increase.
+                becomes unstable, put the mass slider in themiddle then bring{" "}
+                <code>k</code> all the way down and slowly increase.
               </li>
             </ul>
           </span>
