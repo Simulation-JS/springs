@@ -22,10 +22,44 @@ import {
 const Root = () => {
   const k = createState(2);
   const springLength = createState(40);
-  const numNodes = createState(5);
+  const numNodes = createState(4);
   const hasGravity = createState(true);
   const nodeMass = createState(10);
+  const isNonLinear = createState(false);
   let stationaryIndexes = new Set([0]);
+
+  let connections: number[][] = createConnections(numNodes().value);
+
+  function createConnections(numNodes: number) {
+    const res: number[][] = [];
+
+    if (isNonLinear().value) {
+      for (let i = 0; i < numNodes; i++) {
+        const nodeConnections: number[] = [];
+        for (let j = 0; j < numNodes; j++) {
+          if (i === j) continue;
+          nodeConnections.push(j);
+        }
+        res.push(nodeConnections);
+      }
+    } else {
+      for (let i = 0; i < numNodes; i++) {
+        const nodeConnections: number[] = [];
+
+        if (i > 0) {
+          nodeConnections.push(i - 1);
+        }
+
+        if (i < numNodes - 1) {
+          nodeConnections.push(i + 1);
+        }
+
+        res.push(nodeConnections);
+      }
+    }
+
+    return res;
+  }
 
   class SpringNode extends Circle {
     velocity = new Vector(0, 0);
@@ -84,54 +118,30 @@ const Root = () => {
     canvas.add(nodesCol);
     canvas.add(linesCol);
 
-    const nodes = generateNodes(numNodes().value, canvas.width, canvas.height);
-    const lines = generateLines(nodes);
+    let nodes = generateNodes(numNodes().value, canvas.width, canvas.height);
+    let lines = generateLines(nodes, connections);
 
-    lines.forEach((line) => {
-      linesCol.add(line);
-    });
+    function applyToCanvas() {
+      linesCol.empty();
+      nodesCol.empty();
 
-    nodes.forEach((node) => {
-      nodesCol.add(node);
-    });
+      lines.forEach((line) => {
+        linesCol.add(line);
+      });
 
-    let prevNodes = numNodes().value;
+      nodes.forEach((node) => {
+        nodesCol.add(node);
+      });
+    }
+
+    applyToCanvas();
 
     createEffect(() => {
-      while (prevNodes < numNodes().value) {
-        const newNode = new SpringNode(
-          nodes[nodes.length - 1].pos
-            .clone()
-            .add(new Vector(10 * Math.sign(Math.random() - 0.5), 0)),
-          nodeMass().value,
-          new Vector(canvas.width, canvas.height)
-        );
+      nodes = generateNodes(numNodes().value, canvas.width, canvas.height);
+      connections = createConnections(numNodes().value);
+      lines = generateLines(nodes, connections);
 
-        nodes.push(newNode);
-        nodesCol.add(newNode);
-
-        const line = new Line(
-          nodes[nodes.length - 2].pos,
-          newNode.pos,
-          new Color(0, 0, 0),
-          4
-        );
-
-        lines.push(line);
-        linesCol.add(line);
-
-        prevNodes++;
-      }
-
-      while (prevNodes > numNodes().value) {
-        nodes.pop();
-        nodesCol.scene.pop();
-
-        lines.pop();
-        linesCol.scene.pop();
-
-        prevNodes--;
-      }
+      applyToCanvas();
     }, [numNodes]);
 
     createEffect(() => {
@@ -140,6 +150,13 @@ const Root = () => {
       });
     }, [nodeMass]);
 
+    createEffect(() => {
+      connections = createConnections(numNodes().value);
+      lines = generateLines(nodes, connections);
+
+      applyToCanvas();
+    }, [isNonLinear]);
+
     let dragIndex: number | null = null;
     let prevDragPos = new Vector(0, 0);
     let prevDiff = new Vector(0, 0);
@@ -147,13 +164,9 @@ const Root = () => {
 
     frameLoop(() => {
       nodes.forEach((node, index) => {
-        if (stationaryIndexes.has(index)) {
-          node.velocity.x = 0;
-          node.velocity.y = 0;
-          return;
-        }
+        if (stationaryIndexes.has(index)) return;
         if (dragIndex === index) return;
-        const a = getForce(nodes, index);
+        const a = getForce(nodes, index, connections[index]);
         a.divide(node.mass);
         node.accelerate(a);
       });
@@ -217,30 +230,25 @@ const Root = () => {
     });
   });
 
-  function getForce(nodes: SpringNode[], index: number) {
+  function getForce(
+    nodes: SpringNode[],
+    index: number,
+    otherIndexes: number[]
+  ) {
     const gravityDampen = 10;
     let force = new Vector(
       0,
       hasGravity().value ? (9.8 * nodes[index].mass) / gravityDampen : 0
     );
 
-    if (index > 0) {
-      const distX = nodes[index].pos.x - nodes[index - 1].pos.x;
-      const distY = nodes[index].pos.y - nodes[index - 1].pos.y;
+    otherIndexes.forEach((other) => {
+      const distX = nodes[index].pos.x - nodes[other].pos.x;
+      const distY = nodes[index].pos.y - nodes[other].pos.y;
       const rotation = Math.atan2(distY, distX);
       const kVec = new Vector(-k().value, 0).rotate(radToDeg(rotation));
       kVec.multiply(pythag(distX, distY) - springLength().value);
       force.add(kVec);
-    }
-
-    if (index < nodes.length - 1) {
-      const distX = nodes[index].pos.x - nodes[index + 1].pos.x;
-      const distY = nodes[index].pos.y - nodes[index + 1].pos.y;
-      const rotation = Math.atan2(distY, distX);
-      const kVec = new Vector(-k().value, 0).rotate(radToDeg(rotation));
-      kVec.multiply(pythag(distX, distY) - springLength().value);
-      force.add(kVec);
-    }
+    });
 
     force.multiply(0.96);
     return force;
@@ -263,17 +271,24 @@ const Root = () => {
     return currentIndex < 0 ? null : currentIndex;
   }
 
-  function generateLines(nodes: SpringNode[]) {
+  function generateLines(nodes: SpringNode[], connections: number[][]) {
+    const lineSet = new Set<number[]>();
     const res: Line[] = [];
 
-    for (let i = 0; i < nodes.length - 1; i++) {
-      const line = new Line(
-        nodes[i].pos,
-        nodes[i + 1].pos,
-        new Color(0, 0, 0),
-        4
-      );
-      res.push(line);
+    for (let i = 0; i < connections.length; i++) {
+      for (let j = 0; j < connections[i].length; j++) {
+        if (lineSet.has([i, j])) continue;
+
+        const line = new Line(
+          nodes[i].pos,
+          nodes[connections[i][j]].pos,
+          new Color(0, 0, 0),
+          4
+        );
+
+        lineSet.add([i, j]);
+        res.push(line);
+      }
     }
 
     return res;
@@ -284,7 +299,13 @@ const Root = () => {
 
     const padding = 120;
     for (let i = 0; i < num; i++) {
-      const pos = new Vector(width / 2, springLength().value * i + padding);
+      const variationScale = 10;
+      let variation = i > 0 ? Math.random() - 0.5 : 0;
+      variation *= variationScale;
+      const pos = new Vector(
+        width / 2 + variation,
+        springLength().value * i + padding
+      );
       res.push(
         new SpringNode(pos, nodeMass().value, new Vector(width, height))
       );
@@ -305,8 +326,7 @@ const Root = () => {
     numNodes(+e.currentTarget.value);
   };
 
-  const handleGravityChange = (e: any) => {
-    console.log(e.currentTarget.value);
+  const handleGravityChange = () => {
     hasGravity((prev) => !prev);
   };
 
@@ -316,19 +336,27 @@ const Root = () => {
   };
 
   const randomizeSettings = () => {
-    stationaryIndexes = new Set([0]);
-
     const newK = Math.random() * 4 + 2;
     const newLength = randInt(200);
     const numberOfNodes = randInt(7, 3);
     const newMass = randInt(995, 5);
     const newHasGravity = Math.random() > 0.5;
 
+    if (!newHasGravity) {
+      stationaryIndexes = new Set([]);
+    } else {
+      stationaryIndexes = new Set([0]);
+    }
+
     k(newK);
     springLength(newLength);
     numNodes(numberOfNodes);
     nodeMass(newMass);
     hasGravity(newHasGravity);
+  };
+
+  const handleIsNonLinearChange = () => {
+    isNonLinear((prev) => !prev);
   };
 
   return (
@@ -386,6 +414,15 @@ const Root = () => {
             id="gravity-input"
             checked={hasGravity()}
             onChange={handleGravityChange}
+            type="checkbox"
+          />
+        </div>
+        <div>
+          <label for="is-shape-input">Is Shape</label>
+          <input
+            id="is-shape-input"
+            checked={isNonLinear()}
+            onChange={handleIsNonLinearChange}
             type="checkbox"
           />
         </div>
