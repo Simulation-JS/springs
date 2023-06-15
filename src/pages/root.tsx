@@ -103,7 +103,7 @@ const Root = () => {
   }
 
   function dampenVelocity(vel: Vector) {
-    return vel.multiply(0.96);
+    return vel.multiply(0.97);
   }
 
   onPageMount(() => {
