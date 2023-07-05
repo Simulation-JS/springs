@@ -103,7 +103,7 @@ const Root = () => {
   }
 
   function dampenVelocity(vel: Vector) {
-    return vel.multiply(0.97);
+    return vel.multiply(0.98);
   }
 
   onPageMount(() => {
@@ -169,6 +169,10 @@ const Root = () => {
         if (dragIndex === index) return;
         const a = getForce(nodes, index, connections[index]);
         a.divide(node.mass);
+
+        const forceDampen = 0.98;
+        a.multiply(forceDampen);
+
         node.accelerate(a);
       });
     })();
